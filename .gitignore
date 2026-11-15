@@ -5,3 +5,4 @@ out/
 *.deb
 *.dSYM/
 .DS_Store
+ci.log
