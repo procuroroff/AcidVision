@@ -6,6 +6,7 @@
 // This is what keeps app controls alive under a full-screen SpringBoard
 // overlay (pointInside:/hitTest: alone only work inside the owning process).
 - (BOOL)_ignoresHitTest;
+- (BOOL)_usesWindowServerHitTesting;
 @end
 
 @implementation AcidOverlayWindow
@@ -20,6 +21,10 @@
 
 - (BOOL)_ignoresHitTest {
     return YES;
+}
+
+- (BOOL)_usesWindowServerHitTesting {
+    return NO;
 }
 
 - (BOOL)canBecomeKeyWindow {

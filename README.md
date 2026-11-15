@@ -270,6 +270,7 @@ window.userInteractionEnabled = NO;
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event { return NO; }
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event { return nil; }
 - (BOOL)_ignoresHitTest { return YES; }
+- (BOOL)_usesWindowServerHitTesting { return NO; }
 ```
 
 `_ignoresHitTest` — приватный хук window server: без него полноэкранное окно
