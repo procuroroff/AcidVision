@@ -1,0 +1,100 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  THEOS: ${{ github.workspace }}/.theos
+  LDID_VERSION: v2.1.5-procursus7
+
+jobs:
+  build:
+    # Theos builds iOS tweaks with clang on Linux too; only ldid, dpkg-deb and
+    # fakeroot are needed. Ubuntu runners are cheaper and more available than
+    # macOS ones, and the produced arm64 dylib is identical.
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Theos
+        uses: actions/cache@v4
+        with:
+          path: .theos
+          key: theos-${{ runner.os }}-v3
+
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            build-essential fakeroot rsync curl perl zip git libtinfo6 \
+            xz-utils file ca-certificates python3
+          if ! command -v ldid >/dev/null 2>&1; then
+            sudo curl -fsSL -o /usr/local/bin/ldid \
+              https://github.com/ProcursusTeam/ldid/releases/download/${LDID_VERSION}/ldid_linux_x86_64
+            sudo chmod +x /usr/local/bin/ldid
+          fi
+          if [ ! -d "$THEOS/makefiles" ]; then
+            git clone --recursive --shallow-submodules --depth 1 \
+              https://github.com/theos/theos.git "$THEOS"
+          fi
+          # Linux -> iOS cross toolchain; Theos looks for clang in this exact path.
+          if [ ! -x "$THEOS/toolchain/linux/iphone/bin/clang" ]; then
+            mkdir -p "$THEOS/toolchain"
+            curl -sL https://github.com/L1ghtmann/llvm-project/releases/latest/download/iOSToolchain-x86_64.tar.xz \
+              | tar -xJf - -C "$THEOS/toolchain/"
+          fi
+          "$THEOS/toolchain/linux/iphone/bin/clang" --version | head -n 1
+          echo "$THEOS/bin" >> "$GITHUB_PATH"
+
+      - name: Install iOS SDK
+        run: bash .github/scripts/install-sdk.sh "$THEOS/sdks"
+
+      - name: Embed Metal shader
+        run: |
+          set -euo pipefail
+          python3 scripts/embed_shader.py Shaders.metal ShadersSource.h
+          git diff --exit-code -- ShadersSource.h
+
+      - name: Build tweak
+        run: make package FINALPACKAGE=1
+
+      - name: Verify package layout
+        run: |
+          set -euo pipefail
+          deb="$(find packages -maxdepth 1 -name 'com.procuroroff.acidvision_*.deb' -print -quit)"
+          test -n "$deb"
+          echo "== $deb"
+          dpkg-deb -c "$deb"
+          dpkg-deb -c "$deb" | grep -q \
+            "var/jb/Library/MobileSubstrate/DynamicLibraries/AcidVision.dylib"
+          dpkg-deb -c "$deb" | grep -q \
+            "var/jb/Library/MobileSubstrate/DynamicLibraries/AcidVision.plist"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: acidvision-deb
+          path: packages/*.deb
+          if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/') && success()
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/*.deb
+          generate_release_notes: true

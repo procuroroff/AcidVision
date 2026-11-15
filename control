@@ -1,0 +1,10 @@
+Package: com.procuroroff.acidvision
+Name: AcidVision
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Psychedelic Metal overlay for SpringBoard, live camera preview effect, and permanently warped photos.
+Maintainer: procuroroff
+Author: procuroroff
+Section: Tweaks
+Depends: mobilesubstrate, firmware (>= 15.0)
+Homepage: https://github.com/procuroroff/AcidVision
