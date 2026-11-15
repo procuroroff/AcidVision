@@ -44,11 +44,15 @@ static const void *kAcidPreviewHostKey = &kAcidPreviewHostKey;
     }
 
     // Camera constructs its preview shortly after launch, and again when the
-    // app returns from the background.
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-        [self scan];
-    });
+    // app returns from the background. Try a few times in case the preview
+    // layer is created before its host view has a non-zero layout.
+    for (NSNumber *delay in @[@0.6, @2.0, @4.5]) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                     (int64_t)(delay.doubleValue * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            [self scan];
+        });
+    }
 }
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
@@ -78,7 +82,8 @@ static const void *kAcidPreviewHostKey = &kAcidPreviewHostKey;
 
     [self scanLayer:view.layer];
 
-    for (UIView *subview in view.subviews) {
+    // Copy: attaching an overlay mutates the host's subview list.
+    for (UIView *subview in [view.subviews copy]) {
         [self scanView:subview];
     }
 }
@@ -92,7 +97,9 @@ static const void *kAcidPreviewHostKey = &kAcidPreviewHostKey;
         [self attachToPreviewLayer:(AVCaptureVideoPreviewLayer *)layer];
     }
 
-    for (CALayer *sublayer in layer.sublayers) {
+    // Copy: attaching an overlay adds a sublayer to the host, which may be the
+    // layer we are currently iterating.
+    for (CALayer *sublayer in [layer.sublayers copy]) {
         [self scanLayer:sublayer];
     }
 }
