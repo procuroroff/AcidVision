@@ -63,6 +63,8 @@
     window.windowLevel = UIWindowLevelAlert + 100.0;
     window.backgroundColor = UIColor.clearColor;
     window.opaque = NO;
+    window.userInteractionEnabled = NO;
+    window.layer.allowsHitTesting = NO;
     window.rootViewController = [AcidOverlayViewController new];
     window.hidden = NO;
 

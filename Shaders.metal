@@ -31,7 +31,7 @@ struct AcidUniforms {
     float touchActive;
     float hueShift;
     float scanline;
-    float padding;
+    float glitch;
 };
 
 struct VertexOut {
@@ -89,6 +89,8 @@ fragment float4 acid_fragment(VertexOut in [[stage_in]],
 
     float t = u.time * max(u.speed, 0.0);
     float strength = clamp(u.intensity, 0.0, 1.0);
+    float glitch = clamp(u.glitch, 0.0, 1.0);
+    float gTime = floor(t * 10.0) / 10.0;
 
     // --- 1. Domain warp: three interfering sine/cosine fields. -------------
     float w1 = sin(p.x * 5.3 + t * 0.90) * cos(p.y * 4.1 - t * 0.70);
@@ -111,39 +113,64 @@ fragment float4 acid_fragment(VertexOut in [[stage_in]],
         warp += (td / tdist) * sin(tdist * 24.0 - t * 5.0) * exp(-tdist * 4.0) * u.ripple;
     }
 
-    float2 warped = p + warp * 0.075 * strength;
+    // --- 3. Glitchcore: quantised horizontal tears + hard channel offset. --
+    float band = floor(uv.y * 22.0);
+    float bandRand = acid_hash21(float2(band, floor(t * 7.0)));
+    float tear = (bandRand - 0.5) * 0.20 * glitch * step(0.70, bandRand);
+    warp.x += tear;
+    float glitchChroma = glitch * 0.040 * step(0.55, bandRand);
 
-    // --- 3. Chromatic aberration: three palettes, three offsets. -----------
-    float ca = u.chroma * 0.012 * strength;
-    float3 colR = acid_palette(warped + float2(ca, 0.0), t, 0.0);
-    float3 colG = acid_palette(warped, t, 0.0);
-    float3 colB = acid_palette(warped - float2(ca, 0.0), t, 0.0);
+    float2 warped = p + warp * 0.095 * strength;
+
+    // --- 4. Chromatic aberration: three palettes, three offsets. -----------
+    float ca = u.chroma * 0.012 * strength + glitchChroma;
+    float palT = mix(t, gTime, glitch * 0.45);
+    float3 colR = acid_palette(warped + float2(ca, 0.0), palT, 0.0);
+    float3 colG = acid_palette(warped, palT, 0.0);
+    float3 colB = acid_palette(warped - float2(ca, 0.0), palT, 0.0);
     float3 col = float3(colR.r, colG.g, colB.b);
 
-    // --- 4. Wet specular highlight along the wave crests. ------------------
+    // Block-pixel sampling, only on some bands.
+    float2 blockGrid = float2(64.0, 112.0);
+    float2 blockUV = (floor(uv * blockGrid) + 0.5) / blockGrid;
+    float2 blockP = (blockUV - 0.5) * float2(aspect, 1.0);
+    float3 blockCol = acid_palette(blockP + warp * 0.095 * strength, gTime, 0.0);
+    col = mix(col, blockCol, float3(glitch * 0.32 * step(0.50, bandRand)));
+
+    // Random inverted blocks: the classic datamosh flash.
+    float invert = step(0.94, acid_hash21(float2(band, floor(t * 4.0))));
+    col = mix(col, float3(1.0) - col, float3(invert * glitch * 0.55));
+
+    // --- 5. Wet specular highlight along the wave crests. ------------------
     float spec = pow(max(0.0, 1.0 - abs(warp.x + warp.y) * 0.85), 12.0);
     col += spec * float3(0.35, 0.55, 0.85) * strength;
 
-    // --- 5. Hue drift. -----------------------------------------------------
+    // --- 6. Hue drift. -----------------------------------------------------
     float hue = u.hueShift + t * u.hueSpeed;
     float3 hueColor = acid_hsv2rgb(float3(fract(hue), 0.85, 1.0));
     col = mix(col, col * hueColor * 1.60, float3(0.16 * strength));
 
-    // --- 6. Scanlines + grain. --------------------------------------------
+    // --- 7. Scanlines, VHS bars, channel jitter + grain. -------------------
     float scan = 0.5 + 0.5 * sin((uv.y * resolution.y + t * 60.0) * 3.14159265);
     col *= 1.0 - u.scanline * 0.25 * scan;
 
     float grain = acid_hash21(uv * resolution + fract(t) * 91.7);
     col += float3((grain - 0.5) * u.grain);
 
-    // --- 7. Vignette. ------------------------------------------------------
+    // Sparse white VHS bars + per-line channel jitter.
+    float bar = step(0.992, acid_hash21(float2(floor(uv.y * 140.0), floor(t * 30.0))));
+    col += float3(bar * glitch * 0.45);
+    col.r += sin(uv.y * resolution.y * 0.7 + t * 50.0) * glitch * 0.02;
+
+    // --- 8. Vignette. ------------------------------------------------------
     float vig = 1.0 - smoothstep(0.25, 1.15, length(p));
     col *= mix(1.0, vig, u.vignette);
 
-    // --- 8. Alpha. Keep enough transparency that the UI stays readable. ----
+    // --- 9. Alpha. Keep enough transparency that the UI stays readable. ----
     float energy = clamp(length(warp) * 0.55 + abs(ring) * 0.65, 0.0, 1.0);
     float alpha = clamp((0.14 + 0.42 * energy) * strength, 0.0, 0.72);
     alpha *= mix(0.55, 1.0, vig);
+    alpha = clamp(alpha + glitch * 0.06 * step(0.85, bandRand), 0.0, 0.82);
 
     col = clamp(col, float3(0.0), float3(1.0));
     return float4(col * alpha, alpha); // premultiplied

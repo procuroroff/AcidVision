@@ -206,7 +206,30 @@ static NSString *const kAcidRGBSplitKernel =
                 image = controls.outputImage;
             }
 
-            // 4. Chromatic aberration (custom CIKernel, optional).
+            // 4. Glitchcore: chunky pixels + posterised colour bands.
+            CGFloat pixelScale = config.photoPixelate * (minDimension / 1000.0);
+            if (pixelScale > 0.5) {
+                CIFilter *pixellate = [CIFilter filterWithName:@"CIPixellate"];
+                [pixellate setValue:image forKey:kCIInputImageKey];
+                [pixellate setValue:@(pixelScale) forKey:kCIInputScaleKey];
+                [pixellate setValue:[CIVector vectorWithX:CGRectGetMidX(extent)
+                                                        Y:CGRectGetMidY(extent)]
+                             forKey:kCIInputCenterKey];
+                if (pixellate.outputImage) {
+                    image = pixellate.outputImage;
+                }
+            }
+
+            if (config.photoPosterize >= 2.0) {
+                CIFilter *posterize = [CIFilter filterWithName:@"CIColorPosterize"];
+                [posterize setValue:image forKey:kCIInputImageKey];
+                [posterize setValue:@(config.photoPosterize) forKey:@"inputLevels"];
+                if (posterize.outputImage) {
+                    image = posterize.outputImage;
+                }
+            }
+
+            // 5. Chromatic aberration (custom CIKernel, optional).
             CGFloat splitPixels = config.photoChroma * (minDimension / 1000.0);
             if (splitPixels > 0.5) {
                 CIImage *split = [self rgbSplitImage:image amount:splitPixels];

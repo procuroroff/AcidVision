@@ -161,6 +161,7 @@
     uniforms.touchActive = 0.0f;
     uniforms.hueShift = 0.0f;
     uniforms.scanline = _config.scanline;
+    uniforms.glitch = _config.glitch;
 
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     commandBuffer.label = @"AcidVision frame";

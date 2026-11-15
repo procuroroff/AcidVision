@@ -49,6 +49,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) float vignette;
 /// 0...1. Scanline intensity.
 @property (nonatomic, readonly) float scanline;
+/// 0...1. Glitchcore: block tears, RGB stutter, inverted blocks, VHS bars.
+@property (nonatomic, readonly) float glitch;
 /// 0...2. Icon drift amount (0 disables visible movement).
 @property (nonatomic, readonly) float drift;
 
@@ -58,6 +60,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) float photoHue;         // CIHueAdjust angle, radians
 @property (nonatomic, readonly) float photoSaturation;  // CIColorControls saturation
 @property (nonatomic, readonly) float photoChroma;      // RGB split at 1000 px reference
+@property (nonatomic, readonly) float photoPixelate;    // CIPixellate scale at 1000 px reference
+@property (nonatomic, readonly) float photoPosterize;   // CIColorPosterize levels (0 = off)
 
 - (void)reload;
 

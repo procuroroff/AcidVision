@@ -29,8 +29,8 @@ static const void *kAcidDriftKey = &kAcidDriftKey;
     }
     objc_setAssociatedObject(view, kAcidDriftKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    CGFloat amplitude = 3.0 * config.drift;
-    NSTimeInterval duration = 9.0 + (arc4random_uniform(500) / 100.0);
+    CGFloat amplitude = 4.0 * config.drift;
+    NSTimeInterval duration = 7.5 + (arc4random_uniform(450) / 100.0);
 
     CAKeyframeAnimation *drift =
         [CAKeyframeAnimation animationWithKeyPath:@"transform.translation"];
@@ -50,8 +50,8 @@ static const void *kAcidDriftKey = &kAcidDriftKey;
 
     CABasicAnimation *rotation =
         [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-    rotation.fromValue = @(-0.018);
-    rotation.toValue = @(0.018);
+    rotation.fromValue = @(-0.030);
+    rotation.toValue = @(0.030);
     rotation.duration = duration * 0.7;
     rotation.autoreverses = YES;
     rotation.repeatCount = HUGE_VALF;

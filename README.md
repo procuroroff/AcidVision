@@ -107,7 +107,7 @@ gh run download --name acidvision-deb --dir out
 Готовый `.deb` также публикуется в **Releases** при пуше тега:
 
 ```bash
-git tag -a v1.1.0 -m "AcidVision 1.1.0"
+git tag -a v1.2.0 -m "AcidVision 1.2.0"
 git push --follow-tags
 ```
 
@@ -132,8 +132,8 @@ make package FINALPACKAGE=1
 ## 4. Установка
 
 ```bash
-scp packages/com.procuroroff.acidvision_1.1.0_iphoneos-arm64.deb root@iphone:/tmp/
-ssh root@iphone 'dpkg -i /tmp/com.procuroroff.acidvision_1.1.0_iphoneos-arm64.deb'
+scp packages/com.procuroroff.acidvision_1.2.0_iphoneos-arm64.deb root@iphone:/tmp/
+ssh root@iphone 'dpkg -i /tmp/com.procuroroff.acidvision_1.2.0_iphoneos-arm64.deb'
 ssh root@iphone 'killall -9 SpringBoard'
 ```
 
@@ -174,15 +174,16 @@ killall -9 SpringBoard Camera
 | Ключ | По умолчанию | Диапазон | За что отвечает |
 |---|---:|---:|---|
 | `enabled` | `YES` | bool | Полностью выключает оверлей SpringBoard. |
-| `intensity` | `0.55` | 0…1 | Общая сила/непрозрачность эффекта. Больше — плотнее цвет, сильнее волны. |
-| `speed` | `1.0` | 0…3 | Скорость всей анимации: волны, ripple, hue. `0.5` — медитация, `2.0` — кислотный шторм. |
-| `chroma` | `0.38` | 0…1 | Разъезд R/G/B. `0` — без аберрации. |
-| `ripple` | `0.60` | 0…2 | Сила бегущих круговых волн. |
+| `intensity` | `0.72` | 0…1 | Общая сила/непрозрачность эффекта. Больше — плотнее цвет, сильнее волны. |
+| `speed` | `1.15` | 0…3 | Скорость всей анимации: волны, ripple, hue. `0.5` — медитация, `2.0` — кислотный шторм. |
+| `chroma` | `0.45` | 0…1 | Разъезд R/G/B. `0` — без аберрации. |
+| `ripple` | `0.80` | 0…2 | Сила бегущих круговых волн. |
 | `hueSpeed` | `0.24` | 0…2 | Скорость циклической смены оттенка. |
-| `grain` | `0.055` | 0…1 | Плёночное зерно. |
+| `grain` | `0.07` | 0…1 | Плёночное зерно. |
 | `vignette` | `0.36` | 0…1 | Затемнение краёв. |
-| `scanline` | `0.12` | 0…1 | Имитация строк ЭЛТ. |
-| `drift` | `0.60` | 0…2 | Амплитуда дрейфа иконок. `0` — иконки стоят на месте. |
+| `scanline` | `0.18` | 0…1 | Имитация строк ЭЛТ. |
+| `glitch` | `0.55` | 0…1 | Glitchcore: рваные горизонтальные полосы, блочный RGB-сдвиг, инвертированные блоки, VHS-полосы. |
+| `drift` | `1.40` | 0…2 | Амплитуда дрейфа иконок. `0` — иконки стоят на месте. |
 | `driftEnabled` | `YES` | bool | Быстрый выключатель дрейфа. |
 
 ### Камера
@@ -190,13 +191,15 @@ killall -9 SpringBoard Camera
 | Ключ | По умолчанию | Диапазон | За что отвечает |
 |---|---:|---:|---|
 | `cameraPreviewEnabled` | `YES` | bool | Живой оверлей на видоискателе. |
-| `cameraIntensity` | `0.34` | 0…1 | Сила эффекта в видоискателе. Держите ниже `intensity`, иначе плохо видно кадр. |
+| `cameraIntensity` | `0.38` | 0…1 | Сила эффекта в видоискателе. Держите ниже `intensity`, иначе плохо видно кадр. |
 | `photoWarpEnabled` | `YES` | bool | Искажать сохраняемые снимки. |
 | `photoTwirl` | `2.15` | −6…6 | Угол `CITwirlDistortion` в радианах. `3.14` — полный оборот, отрицательный — в другую сторону. |
 | `photoBump` | `0.34` | −1…1 | `CIBumpDistortion`: «линза»/вмятина. Отрицательное — вогнутая. |
 | `photoHue` | `0.55` | −π…π | Сдвиг оттенка `CIHueAdjust` в радианах. |
 | `photoSaturation` | `1.45` | 0…3 | Насыщенность `CIColorControls`. |
 | `photoChroma` | `4.0` | 0…30 | RGB-разъезд в пикселях на эталонные 1000 px; на 12 Мп умножается на `min(w,h)/1000`. |
+| `photoPixelate` | `8.0` | 0…40 | `CIPixellate` для глитч-блоков, в пикселях на 1000 px. `0` — выключено. |
+| `photoPosterize` | `8.0` | 0…16 | `CIColorPosterize`: количество уровней цвета. `0` — выключено. |
 
 ### Готовые пресеты
 
@@ -206,10 +209,12 @@ defaults write com.procuroroff.acidvision intensity -float 0.32
 defaults write com.procuroroff.acidvision speed     -float 0.55
 defaults write com.procuroroff.acidvision cameraIntensity -float 0.20
 
-# Жёсткий LSD
+# Жёсткий LSD + glitchcore
 defaults write com.procuroroff.acidvision intensity -float 0.85
 defaults write com.procuroroff.acidvision speed     -float 1.80
 defaults write com.procuroroff.acidvision chroma    -float 0.75
+defaults write com.procuroroff.acidvision glitch    -float 0.85
+defaults write com.procuroroff.acidvision drift     -float 1.80
 defaults write com.procuroroff.acidvision photoTwirl -float 3.40
 defaults write com.procuroroff.acidvision photoBump  -float 0.55
 
@@ -237,10 +242,12 @@ killall -9 Camera        # Камера перечитает настройки 
    по которым строится палитра. Это даёт «жидкое» течение.
 3. **Ripple** — кольцо `sin(dist * 16 - t * 2.6) * exp(-dist * 2.2)` от
    движущегося центра; опционально второе кольцо от точки касания.
-4. **Chromatic aberration** — палитра считается трижды со сдвигом по X, из
+4. **Glitchcore** — квантованные горизонтальные полосы, блочная выборка цвета,
+   инвертированные datamosh-блоки, VHS-полосы и строчный RGB-джиттер.
+5. **Chromatic aberration** — палитра считается трижды со сдвигом по X, из
    результатов берутся R, G и B.
-5. **Hue drift + specular + scanline + grain + vignette**.
-6. **Premultiplied alpha** — смешивание `One / OneMinusSourceAlpha`, поэтому
+6. **Hue drift + specular + scanline + grain + vignette**.
+7. **Premultiplied alpha** — смешивание `One / OneMinusSourceAlpha`, поэтому
    подложка просвечивает и интерфейс остаётся читаемым.
 
 `AcidRenderer` компилирует MSL в рантайме, создаёт `MTLRenderPipelineState` и
@@ -254,6 +261,8 @@ killall -9 Camera        # Камера перечитает настройки 
 window.windowLevel = UIWindowLevelAlert + 100.0;
 window.opaque = NO;
 window.backgroundColor = UIColor.clearColor;
+window.userInteractionEnabled = NO;
+window.layer.allowsHitTesting = NO;
 ```
 
 и переопределения:
@@ -261,7 +270,12 @@ window.backgroundColor = UIColor.clearColor;
 ```objc
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event { return NO; }
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event { return nil; }
+- (BOOL)_ignoresHitTest { return YES; }
 ```
+
+`_ignoresHitTest` — приватный хук window server: без него полноэкранное окно
+SpringBoard может съедать тачи в **других процессах** (рабочий стол работает, а
+кнопки внутри приложений — нет).
 
 ---
 
@@ -271,9 +285,11 @@ window.backgroundColor = UIColor.clearColor;
    `processedDataForPhoto:originalData:`.
 2. `CIImage` создаётся из HEIC/JPEG, EXIF-orientation «запекается» в пиксели.
 3. Фильтры: `CITwirlDistortion` → `CIBumpDistortion` → `CIHueAdjust` →
-   `CIColorControls` → кастомный `CIKernel` RGB-split.
-4. `CIContext` рендерит `CGImage`, `CGImageDestination` пишет HEIC (или JPEG,
-   если HEIC не поддержан) с quality `0.95` и исходными метаданными.
+   `CIColorControls` → `CIPixellate` → `CIColorPosterize` → кастомный
+   `CIKernel` RGB-split.
+4. `CIContext` рендерит `CGImage`, `CGImageDestination` пишет HEIC/JPEG с
+   quality `0.95` и исходными метаданными. Если контейнер не поддержан,
+   возвращается оригинал — формат файла не подменяется.
 5. В EXIF `UserComment` ставится маркер `AcidVision:processed:v1`.
 6. Второй, страховочный хук `PHAssetCreationRequest
    addResourceWithType:data:options:` проверяет маркер и **не** обрабатывает
@@ -303,7 +319,7 @@ log stream --predicate 'eventMessage CONTAINS "[AcidVision]"' --style compact
 log stream --predicate 'process == "SpringBoard" AND eventMessage CONTAINS "[AcidVision]"'
 
 # проверить, что пакет rootless
-dpkg -c com.procuroroff.acidvision_1.1.0_iphoneos-arm64.deb
+dpkg -c com.procuroroff.acidvision_1.2.0_iphoneos-arm64.deb
 ```
 
 Если оверлея нет:

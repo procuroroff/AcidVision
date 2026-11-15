@@ -21,7 +21,7 @@ typedef struct {
     float touchActive;
     float hueShift;
     float scanline;
-    float padding;
+    float glitch;
 } AcidUniforms;
 
 #endif /* AcidShaderTypes_h */

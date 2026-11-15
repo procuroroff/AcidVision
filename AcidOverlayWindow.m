@@ -1,5 +1,13 @@
 #import "AcidOverlayWindow.h"
 
+@interface AcidOverlayWindow ()
+// Private UIKit window-server hook: when it returns YES the window is skipped
+// during hit-testing in other processes too, not only inside SpringBoard.
+// This is what keeps app controls alive under a full-screen SpringBoard
+// overlay (pointInside:/hitTest: alone only work inside the owning process).
+- (BOOL)_ignoresHitTest;
+@end
+
 @implementation AcidOverlayWindow
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
@@ -8,6 +16,10 @@
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     return nil;
+}
+
+- (BOOL)_ignoresHitTest {
+    return YES;
 }
 
 - (BOOL)canBecomeKeyWindow {
