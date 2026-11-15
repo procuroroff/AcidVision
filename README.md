@@ -107,7 +107,7 @@ gh run download --name acidvision-deb --dir out
 Готовый `.deb` также публикуется в **Releases** при пуше тега:
 
 ```bash
-git tag -a v1.0.0 -m "AcidVision 1.0.0"
+git tag -a v1.1.0 -m "AcidVision 1.1.0"
 git push --follow-tags
 ```
 
@@ -132,8 +132,8 @@ make package FINALPACKAGE=1
 ## 4. Установка
 
 ```bash
-scp packages/com.procuroroff.acidvision_1.0.0_iphoneos-arm64.deb root@iphone:/tmp/
-ssh root@iphone 'dpkg -i /tmp/com.procuroroff.acidvision_1.0.0_iphoneos-arm64.deb'
+scp packages/com.procuroroff.acidvision_1.1.0_iphoneos-arm64.deb root@iphone:/tmp/
+ssh root@iphone 'dpkg -i /tmp/com.procuroroff.acidvision_1.1.0_iphoneos-arm64.deb'
 ssh root@iphone 'killall -9 SpringBoard'
 ```
 
@@ -303,7 +303,7 @@ log stream --predicate 'eventMessage CONTAINS "[AcidVision]"' --style compact
 log stream --predicate 'process == "SpringBoard" AND eventMessage CONTAINS "[AcidVision]"'
 
 # проверить, что пакет rootless
-dpkg -c com.procuroroff.acidvision_1.0.0_iphoneos-arm64.deb
+dpkg -c com.procuroroff.acidvision_1.1.0_iphoneos-arm64.deb
 ```
 
 Если оверлея нет:
