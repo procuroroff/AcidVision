@@ -54,8 +54,9 @@
 
 - (void)didMoveToWindow {
     [super didMoveToWindow];
-    // Stop the 60 fps display link when Camera tears its preview down.
-    self.paused = (self.window == nil);
+    // Stop the 60 fps display link when Camera tears its preview down. If the
+    // renderer failed to initialise, keep the view permanently paused.
+    self.paused = (_renderer == nil) || (self.window == nil);
 }
 
 - (void)drawInMTKView:(MTKView *)view {

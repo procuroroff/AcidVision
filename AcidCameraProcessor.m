@@ -232,7 +232,7 @@ static NSString *const kAcidRGBSplitKernel =
             }
 
             NSMutableDictionary *outputProperties = nil;
-            NSDictionary *baseProperties = metadata ?: sourceProperties;
+            NSDictionary *baseProperties = (metadata.count > 0) ? metadata : sourceProperties;
             if (baseProperties) {
                 outputProperties = [baseProperties mutableCopy];
             } else {

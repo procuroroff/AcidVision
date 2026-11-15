@@ -50,52 +50,82 @@
         return nil;
     }
 
-    NSError *error = nil;
-    id<MTLLibrary> library = [_device newLibraryWithSource:kAcidShaderSource
-                                                   options:nil
-                                                     error:&error];
-    if (!library) {
-        _failureReason = [NSString stringWithFormat:@"Metal shader compilation failed: %@",
-                          error.localizedDescription ?: @"unknown error"];
-        NSLog(@"[AcidVision] %@", _failureReason);
-        return nil;
-    }
+    // Compile MSL off the main thread: SpringBoard startup should not stall
+    // while the Metal compiler works. Frames drawn before the pipeline is
+    // ready are simply skipped.
+    MTLPixelFormat pixelFormat = MTLPixelFormatBGRA8Unorm;
+    view.colorPixelFormat = pixelFormat;
 
-    id<MTLFunction> vertexFunction = [library newFunctionWithName:@"acid_vertex"];
-    id<MTLFunction> fragmentFunction = [library newFunctionWithName:@"acid_fragment"];
-    if (!vertexFunction || !fragmentFunction) {
-        _failureReason = @"Metal shader entry points are missing";
-        NSLog(@"[AcidVision] %@", _failureReason);
-        return nil;
-    }
+    __weak AcidRenderer *weakSelf = self;
+    id<MTLDevice> device = _device;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        AcidRenderer *strongSelf = weakSelf;
+        if (!strongSelf) {
+            return;
+        }
 
-    MTLRenderPipelineDescriptor *descriptor = [MTLRenderPipelineDescriptor new];
-    descriptor.label = @"AcidVision";
-    descriptor.vertexFunction = vertexFunction;
-    descriptor.fragmentFunction = fragmentFunction;
-    descriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat;
+        NSError *error = nil;
+        id<MTLLibrary> library = [device newLibraryWithSource:kAcidShaderSource
+                                                       options:nil
+                                                         error:&error];
+        if (!library) {
+            @synchronized(strongSelf) {
+                strongSelf->_failureReason =
+                    [NSString stringWithFormat:@"Metal shader compilation failed: %@",
+                     error.localizedDescription ?: @"unknown error"];
+                NSLog(@"[AcidVision] %@", strongSelf->_failureReason);
+            }
+            return;
+        }
 
-    // Premultiplied alpha, standard source-over compositing.
-    MTLRenderPipelineColorAttachmentDescriptor *attachment = descriptor.colorAttachments[0];
-    attachment.blendingEnabled = YES;
-    attachment.sourceRGBBlendFactor = MTLBlendFactorOne;
-    attachment.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-    attachment.sourceAlphaBlendFactor = MTLBlendFactorOne;
-    attachment.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        id<MTLFunction> vertexFunction = [library newFunctionWithName:@"acid_vertex"];
+        id<MTLFunction> fragmentFunction = [library newFunctionWithName:@"acid_fragment"];
+        if (!vertexFunction || !fragmentFunction) {
+            @synchronized(strongSelf) {
+                strongSelf->_failureReason = @"Metal shader entry points are missing";
+                NSLog(@"[AcidVision] %@", strongSelf->_failureReason);
+            }
+            return;
+        }
 
-    _pipeline = [_device newRenderPipelineStateWithDescriptor:descriptor error:&error];
-    if (!_pipeline) {
-        _failureReason = [NSString stringWithFormat:@"Could not create render pipeline: %@",
-                          error.localizedDescription ?: @"unknown error"];
-        NSLog(@"[AcidVision] %@", _failureReason);
-        return nil;
-    }
+        MTLRenderPipelineDescriptor *descriptor = [MTLRenderPipelineDescriptor new];
+        descriptor.label = @"AcidVision";
+        descriptor.vertexFunction = vertexFunction;
+        descriptor.fragmentFunction = fragmentFunction;
+        descriptor.colorAttachments[0].pixelFormat = pixelFormat;
+
+        // Premultiplied alpha, standard source-over compositing.
+        MTLRenderPipelineColorAttachmentDescriptor *attachment = descriptor.colorAttachments[0];
+        attachment.blendingEnabled = YES;
+        attachment.sourceRGBBlendFactor = MTLBlendFactorOne;
+        attachment.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        attachment.sourceAlphaBlendFactor = MTLBlendFactorOne;
+        attachment.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+
+        id<MTLRenderPipelineState> pipeline =
+            [device newRenderPipelineStateWithDescriptor:descriptor error:&error];
+        @synchronized(strongSelf) {
+            if (pipeline) {
+                strongSelf->_pipeline = pipeline;
+                NSLog(@"[AcidVision] Metal pipeline ready");
+            } else {
+                strongSelf->_failureReason =
+                    [NSString stringWithFormat:@"Could not create render pipeline: %@",
+                     error.localizedDescription ?: @"unknown error"];
+                NSLog(@"[AcidVision] %@", strongSelf->_failureReason);
+            }
+        }
+    });
 
     return self;
 }
 
 - (void)drawInView:(MTKView *)view {
-    if (!_pipeline || !_commandQueue || !_device) {
+    id<MTLRenderPipelineState> pipeline = nil;
+    @synchronized(self) {
+        pipeline = _pipeline;
+    }
+    if (!pipeline || !_commandQueue || !_device) {
         return;
     }
 
@@ -137,7 +167,7 @@
 
     id<MTLRenderCommandEncoder> encoder =
         [commandBuffer renderCommandEncoderWithDescriptor:pass];
-    [encoder setRenderPipelineState:_pipeline];
+    [encoder setRenderPipelineState:pipeline];
     [encoder setFragmentBytes:&uniforms length:sizeof(uniforms) atIndex:0];
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [encoder endEncoding];
