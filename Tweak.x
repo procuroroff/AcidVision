@@ -18,6 +18,15 @@
 #import "AcidDriftAnimator.h"
 #import "AcidOverlayManager.h"
 
+static BOOL AcidIsCameraProcess(void) {
+    static BOOL isCamera;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        isCamera = [[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.camera"];
+    });
+    return isCamera;
+}
+
 #pragma mark - SpringBoard
 
 %hook SpringBoard
@@ -87,7 +96,9 @@
 - (void)addResourceWithType:(PHAssetResourceType)type
                        data:(NSData *)data
                     options:(PHAssetResourceCreationOptions *)options {
-    if (type == PHAssetResourceTypePhoto && data.length > 0) {
+    // SpringBoard also creates PHAssetCreationRequest objects (screenshots).
+    // Only Camera captures should be warped.
+    if (AcidIsCameraProcess() && type == PHAssetResourceTypePhoto && data.length > 0) {
         NSData *processed = [[AcidCameraProcessor sharedProcessor] processedDataForData:data
                                                                               metadata:nil];
         if (processed.length > 0) {

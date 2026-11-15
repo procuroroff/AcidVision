@@ -121,6 +121,12 @@ static const void *kAcidPreviewHostKey = &kAcidPreviewHostKey;
     }
 
     if (objc_getAssociatedObject(previewLayer, kAcidPreviewLayerKey)) {
+        // Camera may add its preview layer after -setSession:, which would put
+        // it above our overlay. Re-front the existing overlay on every scan.
+        UIView *existing = objc_getAssociatedObject(previewLayer, kAcidPreviewLayerKey);
+        if ([existing isKindOfClass:UIView.class] && existing.superview) {
+            [existing.superview bringSubviewToFront:existing];
+        }
         return;
     }
 
