@@ -97,6 +97,16 @@
             fallback = windowScene;
         }
     }
+
+    // SpringBoard sometimes exposes the main scene only through an existing
+    // window before -connectedScenes settles.
+    if (!fallback) {
+        for (UIWindow *window in application.windows) {
+            if (window.windowScene) {
+                return window.windowScene;
+            }
+        }
+    }
     return fallback;
 }
 
