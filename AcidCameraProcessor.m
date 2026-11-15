@@ -6,10 +6,33 @@
 #import <CoreImage/CoreImage.h>
 #import <ImageIO/ImageIO.h>
 #import <UIKit/UIKit.h>
+#import <CommonCrypto/CommonDigest.h>
 #import <objc/runtime.h>
 
 static NSString *const kAcidMarker = @"AcidVision:processed:v1";
 static const void *kAcidPhotoCacheKey = &kAcidPhotoCacheKey;
+
+// The AVCapturePhoto hook and the PHAssetCreationRequest safety net run at
+// different points and may hand us different NSData objects. Remember both the
+// input and the output digests of a processed capture so the exact same bytes
+// are never warped twice, even if ImageIO drops the EXIF marker.
+static NSMutableOrderedSet<NSData *> *AcidProcessedDigests(void) {
+    static NSMutableOrderedSet *digests;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        digests = [NSMutableOrderedSet orderedSet];
+    });
+    return digests;
+}
+
+static NSData *AcidDigestForData(NSData *data) {
+    if (data.length == 0) {
+        return nil;
+    }
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
+    return [NSData dataWithBytes:digest length:CC_SHA256_DIGEST_LENGTH];
+}
 
 // Core Image Kernel Language (not MSL): a general kernel is needed because a
 // colour kernel cannot sample neighbouring pixels. If the runtime refuses to
@@ -65,12 +88,22 @@ static NSString *const kAcidRGBSplitKernel =
     }
 
     @autoreleasepool {
+        NSData *inputDigest = AcidDigestForData(data);
+        if (inputDigest) {
+            @synchronized(AcidProcessedDigests()) {
+                if ([AcidProcessedDigests() containsObject:inputDigest]) {
+                    return data;
+                }
+            }
+        }
+
         CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
         if (!source) {
             return data;
         }
 
         NSData *result = data;
+        BOOL remember = NO;
         CGImageDestinationRef destination = NULL;
 
         do {
@@ -96,6 +129,7 @@ static NSString *const kAcidRGBSplitKernel =
                 sourceTiff[(__bridge NSString *)kCGImagePropertyTIFFImageDescription];
             if (([comment isKindOfClass:NSString.class] && [comment hasPrefix:kAcidMarker]) ||
                 ([description isKindOfClass:NSString.class] && [description hasPrefix:kAcidMarker])) {
+                remember = YES;
                 break;
             }
 
@@ -190,18 +224,24 @@ static NSString *const kAcidRGBSplitKernel =
             NSMutableData *encoded = [NSMutableData data];
             destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)encoded,
                                                            (__bridge CFStringRef)type, 1, NULL);
-            if (!destination && ![type isEqualToString:@"public.jpeg"]) {
-                type = @"public.jpeg";
-                destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)encoded,
-                                                               (__bridge CFStringRef)type, 1, NULL);
-            }
             if (!destination) {
+                // Do not silently change the container (Camera has already
+                // chosen the file extension/UTI). Leave the photo untouched.
                 CGImageRelease(cgImage);
                 break;
             }
 
-            NSMutableDictionary *outputProperties =
-                metadata ? [metadata mutableCopy] : [NSMutableDictionary dictionary];
+            NSMutableDictionary *outputProperties = nil;
+            NSDictionary *baseProperties = metadata ?: sourceProperties;
+            if (baseProperties) {
+                outputProperties = [baseProperties mutableCopy];
+            } else {
+                outputProperties = [NSMutableDictionary dictionary];
+            }
+            // The pixels were rotated and cropped; stale dimensions would make
+            // some viewers and Photos importers misread the file.
+            [outputProperties removeObjectForKey:(__bridge NSString *)kCGImagePropertyPixelWidth];
+            [outputProperties removeObjectForKey:(__bridge NSString *)kCGImagePropertyPixelHeight];
             outputProperties[(__bridge NSString *)kCGImagePropertyOrientation] = @1;
             outputProperties[(__bridge NSString *)kCGImageDestinationLossyCompressionQuality] = @0.95;
 
@@ -227,6 +267,7 @@ static NSString *const kAcidRGBSplitKernel =
 
             if (ok && encoded.length > 0) {
                 result = encoded;
+                remember = YES;
                 NSLog(@"[AcidVision] warped photo %@ (%lu bytes -> %lu bytes)",
                       type, (unsigned long)data.length, (unsigned long)encoded.length);
             }
@@ -234,6 +275,21 @@ static NSString *const kAcidRGBSplitKernel =
 
         if (destination) {
             CFRelease(destination);
+        }
+        if (remember && inputDigest) {
+            NSMutableOrderedSet *digests = AcidProcessedDigests();
+            @synchronized(digests) {
+                [digests addObject:inputDigest];
+                if (result != data) {
+                    NSData *outputDigest = AcidDigestForData(result);
+                    if (outputDigest) {
+                        [digests addObject:outputDigest];
+                    }
+                }
+                while (digests.count > 64) {
+                    [digests removeObjectAtIndex:0];
+                }
+            }
         }
         CFRelease(source);
         return result;

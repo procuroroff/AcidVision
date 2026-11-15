@@ -67,6 +67,16 @@ static BOOL AcidIsCameraProcess(void) {
     });
 }
 
+- (void)layoutSublayers {
+    %orig;
+
+    // The layer is often created (and gets its session) before it is added to
+    // a laid-out host. Once layout happens, the host has real bounds.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[AcidCameraPreviewManager sharedManager] attachToPreviewLayer:self];
+    });
+}
+
 %end
 
 #pragma mark - Camera: still photos

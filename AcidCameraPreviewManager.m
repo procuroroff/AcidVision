@@ -120,26 +120,33 @@ static const void *kAcidPreviewHostKey = &kAcidPreviewHostKey;
         return;
     }
 
-    if (objc_getAssociatedObject(previewLayer, kAcidPreviewLayerKey)) {
-        // Camera may add its preview layer after -setSession:, which would put
-        // it above our overlay. Re-front the existing overlay on every scan.
-        UIView *existing = objc_getAssociatedObject(previewLayer, kAcidPreviewLayerKey);
-        if ([existing isKindOfClass:UIView.class] && existing.superview) {
-            [existing.superview bringSubviewToFront:existing];
-        }
-        return;
-    }
-
     UIView *host = [self hostViewForLayer:previewLayer];
     if (!host) {
         return;
     }
     if (CGRectIsEmpty(host.bounds) || host.window == nil) {
-        return; // layout has not happened yet; the next scan will retry
+        return; // layout has not happened yet; the layout hook / next scan retries
     }
-    if (objc_getAssociatedObject(host, kAcidPreviewHostKey)) {
-        objc_setAssociatedObject(previewLayer, kAcidPreviewLayerKey, @YES,
+
+    UIView *existing = objc_getAssociatedObject(previewLayer, kAcidPreviewLayerKey);
+    if ([existing isKindOfClass:UIView.class]) {
+        // Camera may add its preview layer after -setSession:, or move it to a
+        // new host. Always keep our overlay as the topmost subview of the host.
+        if (existing.superview != host) {
+            [existing removeFromSuperview];
+            [host addSubview:existing];
+        }
+        if (host.subviews.lastObject != existing) {
+            [host bringSubviewToFront:existing];
+        }
+        return;
+    }
+
+    UIView *hostOverlay = objc_getAssociatedObject(host, kAcidPreviewHostKey);
+    if ([hostOverlay isKindOfClass:UIView.class]) {
+        objc_setAssociatedObject(previewLayer, kAcidPreviewLayerKey, hostOverlay,
                                  OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [host bringSubviewToFront:hostOverlay];
         return;
     }
 

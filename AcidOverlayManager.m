@@ -35,6 +35,11 @@
         return;
     }
 
+    // Install observers before the scene lookup: if SpringBoard is still
+    // booting, the retry loop may run out, but the next scene activation or
+    // app-active notification must be able to restart it.
+    [self installObservers];
+
     if (_window) {
         _window.hidden = NO;
         return;
@@ -52,8 +57,6 @@
         }
         return;
     }
-
-    [self installObservers];
 
     AcidOverlayWindow *window = [[AcidOverlayWindow alloc] initWithWindowScene:scene];
     window.frame = UIScreen.mainScreen.bounds;
@@ -119,12 +122,24 @@
                                              selector:@selector(applicationDidBecomeActive:)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(sceneDidActivate:)
+                                                 name:UISceneDidActivateNotification
+                                               object:nil];
 }
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
+    _retryCount = 0;
     if (_window) {
         _window.hidden = NO;
     } else {
+        [self start];
+    }
+}
+
+- (void)sceneDidActivate:(NSNotification *)notification {
+    _retryCount = 0;
+    if (!_window) {
         [self start];
     }
 }
