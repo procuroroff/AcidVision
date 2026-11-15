@@ -41,13 +41,14 @@ struct VertexOut {
 
 vertex VertexOut acid_vertex(uint vertexID [[vertex_id]]) {
     // Oversized triangle that covers the whole clip space.
-    float2 positions[3] = {
-        float2(-1.0, -1.0),
-        float2( 3.0, -1.0),
-        float2(-1.0,  3.0)
-    };
-
-    float2 p = positions[vertexID];
+    float2 p;
+    if (vertexID == 0) {
+        p = float2(-1.0, -1.0);
+    } else if (vertexID == 1) {
+        p = float2(3.0, -1.0);
+    } else {
+        p = float2(-1.0, 3.0);
+    }
 
     VertexOut out;
     out.position = float4(p, 0.0, 1.0);
@@ -133,7 +134,7 @@ fragment float4 acid_fragment(VertexOut in [[stage_in]],
     col *= 1.0 - u.scanline * 0.25 * scan;
 
     float grain = acid_hash21(uv * resolution + fract(t) * 91.7);
-    col += (grain - 0.5) * u.grain;
+    col += float3((grain - 0.5) * u.grain);
 
     // --- 7. Vignette. ------------------------------------------------------
     float vig = 1.0 - smoothstep(0.25, 1.15, length(p));
@@ -144,6 +145,6 @@ fragment float4 acid_fragment(VertexOut in [[stage_in]],
     float alpha = clamp((0.14 + 0.42 * energy) * strength, 0.0, 0.72);
     alpha *= mix(0.55, 1.0, vig);
 
-    col = clamp(col, 0.0, 1.0);
+    col = clamp(col, float3(0.0), float3(1.0));
     return float4(col * alpha, alpha); // premultiplied
 }
