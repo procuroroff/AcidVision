@@ -77,6 +77,11 @@ static BOOL AcidIsCameraProcess(void) {
     });
 }
 
+- (void)removeFromSuperlayer {
+    %orig;
+    [[AcidCameraPreviewManager sharedManager] detachFromPreviewLayer:self];
+}
+
 %end
 
 #pragma mark - Camera: still photos

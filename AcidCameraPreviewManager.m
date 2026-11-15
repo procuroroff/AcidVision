@@ -180,6 +180,35 @@ static const void *kAcidPreviewHostKey = &kAcidPreviewHostKey;
     return nil;
 }
 
+- (void)detachFromPreviewLayer:(AVCaptureVideoPreviewLayer *)previewLayer {
+    if (!previewLayer) {
+        return;
+    }
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self detachFromPreviewLayer:previewLayer];
+        });
+        return;
+    }
+
+    UIView *overlay = objc_getAssociatedObject(previewLayer, kAcidPreviewLayerKey);
+    objc_setAssociatedObject(previewLayer, kAcidPreviewLayerKey, nil,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    if (![overlay isKindOfClass:UIView.class]) {
+        return;
+    }
+
+    UIView *host = overlay.superview;
+    if (host) {
+        UIView *hostOverlay = objc_getAssociatedObject(host, kAcidPreviewHostKey);
+        if (hostOverlay == overlay) {
+            objc_setAssociatedObject(host, kAcidPreviewHostKey, nil,
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+    }
+    [overlay removeFromSuperview];
+}
+
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }

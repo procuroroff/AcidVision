@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)start;
 - (void)attachToPreviewLayer:(AVCaptureVideoPreviewLayer *)previewLayer;
+- (void)detachFromPreviewLayer:(AVCaptureVideoPreviewLayer *)previewLayer;
 
 @end
 
