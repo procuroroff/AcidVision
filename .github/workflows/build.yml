@@ -79,11 +79,10 @@ jobs:
           deb="$(find packages -maxdepth 1 -name 'com.procuroroff.acidvision_*.deb' -print -quit)"
           test -n "$deb"
           echo "== $deb"
-          dpkg-deb -c "$deb"
-          dpkg-deb -c "$deb" | grep -q \
-            "var/jb/Library/MobileSubstrate/DynamicLibraries/AcidVision.dylib"
-          dpkg-deb -c "$deb" | grep -q \
-            "var/jb/Library/MobileSubstrate/DynamicLibraries/AcidVision.plist"
+          listing="$(mktemp)"
+          dpkg-deb -c "$deb" | tee "$listing"
+          grep -q "var/jb/Library/MobileSubstrate/DynamicLibraries/AcidVision.dylib" "$listing"
+          grep -q "var/jb/Library/MobileSubstrate/DynamicLibraries/AcidVision.plist" "$listing"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
