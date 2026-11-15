@@ -90,7 +90,12 @@ static NSString *const kAcidRGBSplitKernel =
                 sourceProperties[(__bridge NSString *)kCGImagePropertyExifDictionary];
             NSString *comment =
                 sourceExif[(__bridge NSString *)kCGImagePropertyExifUserComment];
-            if ([comment isKindOfClass:NSString.class] && [comment hasPrefix:kAcidMarker]) {
+            NSDictionary *sourceTiff =
+                sourceProperties[(__bridge NSString *)kCGImagePropertyTIFFDictionary];
+            NSString *description =
+                sourceTiff[(__bridge NSString *)kCGImagePropertyTIFFImageDescription];
+            if (([comment isKindOfClass:NSString.class] && [comment hasPrefix:kAcidMarker]) ||
+                ([description isKindOfClass:NSString.class] && [description hasPrefix:kAcidMarker])) {
                 break;
             }
 
@@ -205,6 +210,13 @@ static NSString *const kAcidRGBSplitKernel =
                     ?: [NSMutableDictionary dictionary];
             exif[(__bridge NSString *)kCGImagePropertyExifUserComment] = kAcidMarker;
             outputProperties[(__bridge NSString *)kCGImagePropertyExifDictionary] = exif;
+
+            NSMutableDictionary *tiff =
+                [outputProperties[(__bridge NSString *)kCGImagePropertyTIFFDictionary] mutableCopy]
+                    ?: [NSMutableDictionary dictionary];
+            tiff[(__bridge NSString *)kCGImagePropertyTIFFOrientation] = @1;
+            tiff[(__bridge NSString *)kCGImagePropertyTIFFImageDescription] = kAcidMarker;
+            outputProperties[(__bridge NSString *)kCGImagePropertyTIFFDictionary] = tiff;
 
             CGImageDestinationAddImage(destination, cgImage,
                                        (__bridge CFDictionaryRef)outputProperties);
