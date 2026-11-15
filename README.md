@@ -1,5 +1,8 @@
 # AcidVision
 
+[![build](https://github.com/procuroroff/AcidVision/actions/workflows/build.yml/badge.svg)](https://github.com/procuroroff/AcidVision/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/procuroroff/AcidVision?include_prereleases&label=release)](https://github.com/procuroroff/AcidVision/releases/latest)
+
 Психоделический rootless-твик для **iPhone 7 / iOS 15.8** (Dopamine, palera1n):
 жидкое «кислотное» искажение поверх SpringBoard, живой эффект в видоискателе
 Камеры и **реально искажённые фотографии**, которые сохраняются в галерею.

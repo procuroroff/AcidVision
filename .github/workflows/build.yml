@@ -60,6 +60,8 @@ jobs:
           fi
           "$THEOS/toolchain/linux/iphone/bin/clang" --version | head -n 1
           echo "$THEOS/bin" >> "$GITHUB_PATH"
+          echo "== toolchain binaries (metal?) =="
+          ls "$THEOS/toolchain/linux/iphone/bin" | grep -i -E 'metal|air' || true
 
       - name: Install iOS SDK
         run: bash .github/scripts/install-sdk.sh "$THEOS/sdks"
