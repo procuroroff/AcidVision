@@ -262,7 +262,6 @@ window.windowLevel = UIWindowLevelAlert + 100.0;
 window.opaque = NO;
 window.backgroundColor = UIColor.clearColor;
 window.userInteractionEnabled = NO;
-window.layer.allowsHitTesting = NO;
 ```
 
 и переопределения:

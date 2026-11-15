@@ -64,7 +64,6 @@
     window.backgroundColor = UIColor.clearColor;
     window.opaque = NO;
     window.userInteractionEnabled = NO;
-    window.layer.allowsHitTesting = NO;
     window.rootViewController = [AcidOverlayViewController new];
     window.hidden = NO;
 
